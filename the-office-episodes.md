@@ -109,7 +109,7 @@ which had the highest rating and the biggest viewership averall.
     ## 13 halsted sullivan        7  3.11
     ## 14 warren lieberstein      7  3.11
 
-Check out some fan facts about the top-3 writers:  
+Check out some fun facts about the top-3 writers:  
 1. [Mindy
 Kaling](https://www.google.com/search?q=mindy+kaling&oq=mindy+kaling&aqs=chrome..69i57.719j0j7&sourceid=chrome&ie=UTF-8)  
 2. [Paul
