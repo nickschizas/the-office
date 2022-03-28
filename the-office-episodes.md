@@ -119,4 +119,4 @@ Novak](https://www.google.com/search?q=bj+novak&oq=bj+novak&aqs=chrome..69i57.22
   
 *Bonus*: Also,
 [Mose](https://www.google.com/search?q=michael+schur&ei=2CcvYtWYEdqP9u8P7a-D8AQ&ved=0ahUKEwjV5O_NwMX2AhXah_0HHe3XAE4Q4dUDCA4&uact=5&oq=michael+schur&gs_lcp=Cgdnd3Mtd2l6EAMyBwgAEEcQsAMyBwgAEEcQsAMyBwgAELADEEMyDwguENQCEMgDELADEEMYATIMCC4QyAMQsAMQQxgBMgwILhDIAxCwAxBDGAEyDAguEMgDELADEEMYATIMCC4QyAMQsAMQQxgBMgwILhDIAxCwAxBDGAFKBAhBGABKBAhGGABQAFgAYLsWaANwAXgAgAEAiAEAkgEAmAEAyAEJwAEB2gEECAEYCA&sclient=gws-wiz)
-wrote 10 episodes!! 🤣
+wrote 10 episodes!!
