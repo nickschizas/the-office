@@ -1,0 +1,330 @@
+---
+title: "The Office episodes dataset Exploratory Data Analysis"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	fig.height = 6,
+	fig.width = 9,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+```{r include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(tidytext)
+library(wordcloud2)
+library(showtext)
+
+#colors
+#darker ----> brighter
+col9 <- c("#003f5c", "#2f4b7c", "#665191","#a05195", "#d45087", "#f95d6a", "#ff7c43", "#ffa600","#ffba3b")
+col9_mono <- c("#003f5c", "#164e6e", "#275e80", "#376e92", "#467fa5", "#5690b9", "#65a1cc", "#75b3e1", "#85c5f5")
+
+#Theme
+font_add("ibm-plex",
+         regular = "C:/Windows/Fonts/ibmplexsans-regular.ttf",
+         bold = "C:/Windows/Fonts/ibmplexsans-bold.ttf",
+         italic = "C:/Windows/Fonts/ibmplexsans-italic.ttf")
+showtext_auto()  
+
+theme_set(theme_minimal())
+theme_update(
+    text = element_text(family = "ibm-plex"),
+    plot.title = element_text(face = 'bold', color = "black"),
+    plot.subtitle = element_text(face = "italic", color = "grey28"),
+    axis.title = element_text(color = "black"),
+    axis.text = element_text(color = "black"),
+    legend.title = element_text(color = "black", face = "bold")
+)
+```
+
+  
+  
+# Abstract  
+  
+In the following analysis I will try to draw some interesting insights for [The Office](https://www.imdb.com/title/tt0386676/) series.    
+  
+```{r import data, include=FALSE}
+episodes <- read_csv("episodes.csv")
+
+
+episodes <- episodes %>% 
+  rename(EpisodeID = ...1,
+         AirDate = Date) %>% 
+  mutate(AirDate = as.Date(AirDate, "%d-%m-%Y"),
+         Viewership = as.numeric(Viewership),
+         Season = as.factor(Season))
+```
+
+</br>
+
+# Explore the Data  
+
+```{r echo=FALSE}
+episodes
+```
+
+  
+```{r}
+episodes %>% 
+  ggplot(aes(Season)) +
+  geom_bar(fill = col9[1]) +
+  labs(title = "How many episodes did each season have?",
+       y = NULL,
+       x = NULL) +
+  geom_text(aes(label = ..count..), stat = "count",
+            vjust = 1.3, color = "white", fontface = 2) +
+  theme(axis.text.y = element_blank())
+```
+  
+  
+  
+```{r}
+episodes %>% 
+  ggplot(aes(x = Season, y = Ratings)) +
+  geom_boxplot(fill = col9[1]) +
+  labs(y = "Ratings",
+       x = "Season")
+```
+  
+  
+We can see the small difference between the top 3 in the bar graph below.  
+```{r}
+episodes %>% 
+  group_by(Season) %>% 
+  summarise("Season Rating" = mean(Ratings)) %>% 
+  ggplot(aes(x = Season, y = `Season Rating`)) +
+  geom_col(fill = c(col9_mono[5],
+                    col9_mono[5],
+                    col9_mono[1],
+                    col9_mono[1],
+                    col9_mono[1],
+                    col9_mono[5],
+                    col9_mono[5],
+                    col9_mono[5],
+                    col9_mono[5])) +
+  labs(title ="Which season was the best?",
+       x = NULL,
+       y = NULL) +
+  geom_text(aes(label = round(`Season Rating`,2)),
+            vjust = 1.3, color = "white", fontface = 2) +
+  theme(axis.text.y = element_blank())  
+```
+  
+  
+```{r}
+episodes %>% 
+  ggplot(aes(EpisodeID, Ratings)) +
+  geom_point(aes(color = Season, size = Viewership)) +
+  scale_color_manual(values = col9) + 
+  geom_text(aes(label = EpisodeTitle), check_overlap = TRUE, hjust = 1.1) +
+  theme(axis.text.x = element_blank()) +
+  labs(x = NULL,
+       size = "Viewership (in millions)")
+```
+  
+  
+```{r}
+episodes %>%
+  select(EpisodeTitle, Ratings, Season) %>% 
+  top_n(50, Ratings) %>% 
+  arrange(desc(Ratings)) %>% 
+  ggplot(aes(Ratings, fct_reorder(EpisodeTitle, Ratings))) +
+  geom_point(aes(color = Season), size = 2.5) +
+  scale_color_manual(values = col9) +
+  labs(y = NULL,
+       title = "Episodes' ratings")
+```
+  
+  
+```{r}
+episodes %>%
+  group_by(Season) %>% 
+  summarise(views = sum(Viewership)) %>% 
+  ggplot(aes(x = Season, y = views)) +
+  geom_col(fill = col9[1]) +
+  labs(title = "How many peope watched each season?",
+       x = NULL,
+       y = NULL) +
+  geom_text(aes(label = paste0(views,"M")),
+            vjust = 1.5, color = "white", fontface = 2) +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+```  
+
+</br>
+
+### **Ratings & Viewership**  
+  
+* Ratings range from 6.6 to 9.8 with an average of 8.24 and a median of 8.2.  
+* Viewership range from 3.25 to 23 millions with an average of 7.3 millions and a median of 7.5 millions.  
+  
+```{r}
+summary(episodes$Ratings)
+summary(episodes$Viewership)
+```  
+  
+  
+As we can see in the graph below, the seasons with the highest ratings and the biggest viewership were the first 6. We could also observe that the more people watch the higher the rating was.    
+```{r}
+episodes %>% 
+  ggplot(aes(x = Viewership, y = Ratings, color = Season)) +
+  geom_point(size = 2.5) +
+  labs(color = "Season",
+       x = "Viewership (in millions)") +
+  scale_color_manual(values = col9)
+```
+  
+  
+  
+```{r}
+episodes %>% 
+  select(EpisodeTitle, Viewership, Season) %>% 
+  arrange(-Viewership) %>% 
+  group_by(Season) %>% 
+  top_n(Viewership, n = 10) %>% 
+  ungroup %>% 
+  mutate(EpisodeTitle = reorder_within(EpisodeTitle, Viewership, Season)) %>% 
+      ggplot(aes(Viewership, EpisodeTitle, fill = Season)) +
+    geom_col(show.legend = FALSE) +
+    facet_wrap(~ Season, scales = "free", ncol = 3) +
+    scale_y_reordered() +
+  labs(title = "Top-10 episodes for each season with the highest viewership",
+       subtitle = "Note that the first season had only 6 episodes",
+       x = "Viewership (in millions)",
+       y = NULL) +
+  scale_fill_manual(values = col9)
+```
+  
+  
+  
+```{r}
+episodes %>% 
+  select(EpisodeTitle, Ratings, Season) %>% 
+  arrange(-Ratings) %>% 
+  group_by(Season) %>% 
+  top_n(Ratings, n = 10) %>% 
+  ungroup %>% 
+  mutate(EpisodeTitle = reorder_within(EpisodeTitle, Ratings, Season)) %>% 
+      ggplot(aes(Ratings, EpisodeTitle, fill = Season)) +
+    geom_col( show.legend = FALSE) +
+    facet_wrap(~ Season, scales = "free", ncol = 3) +
+    scale_y_reordered() +
+  labs(title = "Top-10 episodes for each season",
+       subtitle = "Note that the first season had only 6 episodes",
+       x = NULL,
+       y = NULL) +
+  scale_fill_manual(values = col9)
+```
+  
+  
+The increasing number of each episode has been recorded as EpisodeID. In the diagram that follows we can observe that the larger the number of episodes the less viewership it had. Look at the pink points are the top 8 EpisodeID by viewership. Seems like the most viewed episodes was the early ones. The outlier point is the episode ["Stress Relief"](https://www.imdb.com/title/tt1248736/) at season 5, with rating 9.7.  
+```{r}
+top8 <- episodes %>%
+  top_n(n = 8, wt = Viewership)
+
+episodes %>% 
+  ggplot(aes(EpisodeID, Viewership)) +
+  geom_point(size = 2, color = col9[1]) +
+  geom_point(data = top8, aes(EpisodeID, Viewership), color = col9[6]) +
+  geom_text(data = top8, aes(label = Viewership), check_overlap = T, 
+            vjust = -1, fontface = 2) +
+  geom_smooth(se = F, color = col9[9]) +
+  labs(y = "Viewership (in millions)") +
+  scale_x_continuous(breaks = seq(0, length(episodes$EpisodeID),10))
+```
+  
+  
+I categorized the episodes based on their duration into double or single depending on whether the duration exceeds 30 minutes. Notice that the double episodes have higher scores than the singles in every season.  
+```{r}
+episodes %>%
+  mutate(EpisodeType = if_else(Duration <= 30, "single", "double")) %>% 
+  ggplot(aes(EpisodeType, Ratings, fill = EpisodeType)) +
+  geom_boxplot(show.legend = F) +
+  scale_fill_manual(values = c(col9[1], col9[8])) +
+  facet_wrap(~episodes$Season, scales = "free") +
+  labs(title = "The doubles or singles was the best episodes?",
+       subtitle = "The first, the second and the eighth season had not double episodes",
+       x = NULL,
+       y = NULL)
+```  
+  
+  
+There is not a strong pattern about the day of the month an episode was released.  
+```{r}
+top4 <- episodes %>% 
+  mutate(dayofmonth = day(AirDate)) %>%
+  count(dayofmonth) %>% 
+  top_n(4, wt = n)
+
+episodes %>% 
+  mutate(dayofmonth = day(AirDate)) %>%
+  ggplot(aes(dayofmonth)) +
+  geom_bar(fill = col9[1]) +
+  geom_col(data = top4, aes(dayofmonth, n), fill = col9[8]) +
+  labs(title = "Number of episodes aired for each day of the month",
+       subtitle = "Top-4 days of the month with yellow",
+       x = "Day of the month",
+       y = NULL) +
+  scale_x_continuous(breaks = c(1:31))
+```
+  
+  
+Contrariwise most episodes was released on Thursdays. That one episode was the ["Stress Relief"](https://www.imdb.com/title/tt1248736/) episode which had the highest rating and the biggest viewership averall.
+```{r}
+episodes %>% 
+  mutate(weekday = wday(AirDate,
+                        label = T,
+                        abbr = F,
+                        locale = "English_United States.1252")) %>%
+  ggplot(aes(weekday)) +
+  geom_bar(width = 0.3, fill = col9[1]) +
+  labs(title = "Episodes for each day of the week",
+       x = NULL,
+       y = NULL) +
+  geom_text(aes(label = ..count..), stat = "count",
+            vjust = -0.4, color = "black", fontface = 2) +
+    theme(axis.text.y = element_blank())
+```
+  
+</br>
+  
+### **Who wrote the more episodes?**   
+
+  
+![](C:/Users/Nick/Documents/R/code/The Office project/the-office-episodes_files/figure-gfm/wordcloud.png)  
+ 
+```{r eval=FALSE, include=FALSE}
+episodes %>%
+  select(Writers, Ratings, Season) %>%
+  unnest_tokens("individual writer", Writers, token = "regex", pattern = "@@") %>%
+  mutate(`individual writer` = str_trim(`individual writer`,side = c("both"))) %>%
+  count(`individual writer`, sort = T) %>%
+  wordcloud2(size = 0.5,
+           rotateRatio = 0,
+           fontWeight = "600",
+           color = rep_len(col9,40))
+```
+
+```{r}
+episodes %>% 
+  select(Writers, Ratings, Season) %>%
+  unnest_tokens("individual writer", Writers, token = "regex", pattern = "@@") %>% 
+  mutate(`individual writer` = str_trim(`individual writer`,side = c("both"))) %>%
+  count(`individual writer`, sort = T) %>% 
+  mutate(`%` = n*100/sum(n)) %>% 
+  top_n(12, n)
+```
+  
+  
+Check out some fan facts about the top-3 writers:  
+1. [Mindy Kaling](https://www.google.com/search?q=mindy+kaling&oq=mindy+kaling&aqs=chrome..69i57.719j0j7&sourceid=chrome&ie=UTF-8)  
+2. [Paul Lieberstein](https://www.google.com/search?q=paul+lieberstein&oq=paul+lieberstein&aqs=chrome..69i57.674j0j7&sourceid=chrome&ie=UTF-8)  
+3. [B. J. Novak](https://www.google.com/search?q=bj+novak&oq=bj+novak&aqs=chrome..69i57.2293j0j9&sourceid=chrome&ie=UTF-8)
