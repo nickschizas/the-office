@@ -1,0 +1,329 @@
+---
+title: "The Office"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	fig.height = 6,
+	fig.width = 9,
+	message = FALSE,
+	warning = FALSE
+)
+
+library(tidyverse)
+
+#colors
+#darker ----> brighter
+col9 <- c("#003f5c", "#2f4b7c", "#665191","#a05195", "#d45087", "#f95d6a", "#ff7c43", "#ffa600","#ffba3b")
+col9_mono <- c("#003f5c", "#164e6e", "#275e80", "#376e92", "#467fa5", "#5690b9", "#65a1cc", "#75b3e1", "#85c5f5")
+
+#Theme
+library(showtext)
+font_add("ibm-plex",
+         regular = "C:/Windows/Fonts/ibmplexsans-regular.ttf",
+         bold = "C:/Windows/Fonts/ibmplexsans-bold.ttf",
+         italic = "C:/Windows/Fonts/ibmplexsans-italic.ttf")
+showtext_auto()  
+
+theme_set(theme_minimal())
+theme_update(
+    text = element_text(family = "ibm-plex"),
+    plot.title = element_text(face = 'bold', color = "black"),
+    plot.subtitle = element_text(face = "italic", color = "grey28"),
+    axis.title = element_text(color = "black"),
+    axis.text = element_text(color = "black"),
+    legend.title = element_text(color = "black", face = "bold")
+)
+```
+
+# Abstract  
+  
+In the following analysis I will try to draw some interesting insights for [The Office](https://www.imdb.com/title/tt0386676/) series.
+
+
+</br>
+
+
+## The data comes from the [tidytuesday](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-03-17/readme.md)
+```{r}
+office_transcripts <- schrute::theoffice %>%
+  mutate(season = as.factor(season),
+         character = str_remove_all(character, '"'),
+         air_date = as.Date(air_date))
+
+office_transcripts
+```
+
+
+</br>
+
+
+## Create and explore the episodes data
+
+```{r}
+#Locate the misspellings:
+# office_transcripts %>% 
+#   distinct(director) %>%
+#   arrange(director) %>%
+#   view()
+
+
+episodes <- office_transcripts %>% 
+  group_by(season, episode) %>% 
+  summarise(air_date = first(air_date),
+            episode_name = first(episode_name),
+            director = first(director),
+            writer = first(writer),
+            imdb_rating = first(imdb_rating),
+            total_votes = first(total_votes)) %>% 
+  mutate(writer = str_replace_all(writer, ";", " & "),
+         director = str_replace_all(director, ";", " & ")) %>%
+  mutate(director = if_else(director == "Charles McDougal", 
+                                "Charles McDougall", director),
+         director = if_else(director == "Paul Lieerstein",
+                                "Paul Lieberstein", director),
+         director = if_else(director == "Claire Scanlong",
+                                "Claire Scanlon", director),
+         director = if_else(director == "Greg Daneils",
+                                "Greg Daniels", director),
+         director = if_else(director == "Ken Wittingham",
+                                "Ken Whittingham", director)) %>% 
+  ungroup()
+
+episodes
+```
+
+
+</br>
+
+
+```{r}
+episodes %>% 
+  ggplot(aes(season)) +
+  geom_bar(fill = col9[1]) +
+  labs(title = "Episodes per season",
+       y = NULL,
+       x = NULL) +
+  geom_text(aes(label = ..count..), stat = "count",
+            vjust = 1.3, color = "white", fontface = 2) +
+  theme(axis.text.y = element_blank())
+```
+  
+Most episodes aired on Thursdays.  
+The only episode aired on Sunday was the "Stress Relief" episode.  
+```{r}
+episodes %>% 
+  mutate(dayofweek = lubridate::wday(air_date, label = T, abbr = F, 
+                                     locale = "English_United States.1252")) %>%
+  ggplot(aes(dayofweek)) +
+    geom_bar(fill = col9[1], width = 0.5) +
+   geom_text(aes(label = ..count..), stat = "count",
+            vjust = -0.4, color = "black", fontface = 2) +
+  labs(y = NULL,
+       x = NULL) +
+  theme(axis.text.y = element_blank())
+
+
+episodes %>% 
+  mutate(dayofweek = lubridate::wday(air_date, label = T, abbr = F, 
+                                     locale = "English_United States.1252")) %>% 
+  filter(dayofweek == "Sunday")
+```
+  
+Seems like the 4th season was the best of the series.
+```{r}
+episodes %>% 
+  group_by(season) %>% 
+  summarise(avg_rating = mean(imdb_rating)) %>% 
+  ggplot(aes(as.numeric(season), avg_rating)) +
+  geom_line(color = col9[1], size = 1.3) +
+  geom_point(color = col9[9], size = 4) +
+  scale_x_continuous(breaks = 1:9) +
+  labs(x = "Season",
+       y = "IMDb rating",
+       title = "IMDb ratings through seasons") +
+  theme(panel.grid.minor.x = element_blank())
+
+
+episodes %>% 
+  ggplot(aes(season, imdb_rating)) +
+  geom_boxplot(aes(fill = season), show.legend = F) +
+  scale_fill_manual(values = col9) +
+  labs(x = "Season",
+       y = "IMDb rating")
+```
+  
+Can you spot your personal favorite in the graph bellow?
+```{r}
+episodes %>% 
+  mutate(episode_info = paste0("s", season, "e", episode, " ", episode_name)) %>% 
+  arrange(-imdb_rating) %>% 
+  head(30) %>%
+  ggplot(aes(imdb_rating, reorder(episode_info, imdb_rating))) +
+  geom_point(aes(size = total_votes), color = col9[1]) +
+  labs(title = "Top 30 episodes of the series",
+       x = "IMDb rating",
+       y = NULL,
+       size = "Total votes")
+```
+
+```{r}
+episodes %>% 
+  ggplot(aes(air_date, imdb_rating)) +
+  geom_point(aes(color = season, size = total_votes), show.legend = F) +
+  geom_smooth(color = "black", lty = 2, alpha = 0.5, se = F) +
+  geom_text(aes(label = episode_name), 
+            check_overlap = T, 
+            hjust = 1.1, 
+            color = "gray40") +
+  scale_color_manual(values = col9) +
+  labs(title = "Ratings' trend for each episode through the time",
+       subtitle = "Size represents total votes, color represents season",
+       x = "Air date",
+       y = "IMDb rating") +
+  expand_limits(x = as.Date("2004-07-01"))
+```
+  
+Later episodes of the season tend to have better ratings as we can see in the graph below.
+```{r}
+episodes %>% 
+  ggplot(aes(as.factor(episode), imdb_rating)) +
+  geom_boxplot(aes(fill = as.factor(episode)), show.legend = F) +
+  scale_fill_manual(values = rep(col9,4)) +
+  labs(title = "Ratings for each episode of the season",
+       subtitle = "Season 5 was the only season with episode 27 and 28",
+       x = "Episode in the Season",
+       y = "IMDb rating")
+```
+  
+Who was the best writer and director of the series?
+```{r}
+episodes %>% 
+  mutate(director = fct_lump(director, 10)) %>%
+  filter(director != "Other") %>% 
+  ggplot(aes(imdb_rating, reorder(director, imdb_rating))) +
+  geom_boxplot(aes(fill = director), show.legend = F) +
+  scale_fill_manual(values = rep(col9, 8)) +
+  scale_x_continuous(breaks = seq(6.5, 10, 0.5)) +
+  labs(x = "IMDb rating",
+       y = NULL,
+       title = "Top 10 directors")
+
+
+episodes %>%
+  mutate(writer = fct_lump(writer, 10)) %>% 
+  filter(writer != "Other") %>% 
+  ggplot(aes(imdb_rating, reorder(writer, imdb_rating))) +
+  geom_boxplot(aes(fill = writer), show.legend = F) +
+  scale_fill_manual(values = rep(col9, 8)) +
+  labs(x = "IMDb rating",
+       y = NULL,
+       title = "Top 10 writers")
+```
+
+
+</br>
+
+
+
+## Predict rating by total votes and episode number  
+  
+Perhaps there is a linear relationship between ratings and total votes.  
+```{r}
+ggplot(episodes, aes(log2(total_votes), imdb_rating)) +
+  geom_point(alpha = 0.5, color = col9[1]) +
+  geom_smooth(method = "lm", se = F, lty = 2, color = col9[9]) +
+  labs(x = "IMDb rating (log2)",
+       y = "Total votes")
+```
+  
+  
+I tried to fitted a linear model in the data and here are the results.
+```{r}
+lm_mod <- lm(imdb_rating ~ log2(total_votes) + episode,
+   data = episodes)
+summary(lm_mod)
+```
+Every time total_votes double the imdb_rating goes up by ~1 (0.93). Also every next episode the rating tends to get better by 0.015 points.  
+  
+Total votes have bigger effect on the rating than the episode number.  
+```{r}
+lm_mod %>%
+  broom::tidy(conf.int = T) %>%
+  filter(term != "(Intercept)") %>%
+  ggplot(aes(estimate, term)) +
+  geom_errorbar(aes(xmin = conf.low, xmax = conf.high), color = col9[1]) +
+  geom_point(color = col9[9], size = 2) +
+  expand_limits(xmin = -0.1) +
+  labs(x = "Estimate",
+       y = NULL)
+```
+
+
+</br>
+
+
+## TF-IDF words for each character and season
+  
+To determine the most frequent words for each character/season I used the tf-idf metric.  
+"tf-idf" stands for term **frequency-inverse document frequency** and counts the most common words in each document which are not common in general. In this case the documents are the characters and the seasons.  
+  
+What are the most common words for each character?
+```{r}
+library(tidytext)
+
+scripts <- office_transcripts %>% 
+  select(season, episode, episode_name, character, text)
+
+blacklist <- c("bum", "ole", "pum", "parum", "ha", "la", "ash", "nope", "amen")
+character_names <- c("Michael", "Jim", "Dwight", "Andy", "Pam", "Angela")
+
+scripts %>% 
+  filter(character %in% character_names) %>% 
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!word %in% blacklist) %>% 
+  count(character, word) %>% 
+  bind_tf_idf(word, character, n) %>%
+  group_by(character) %>% 
+  slice_max(tf_idf, n = 5) %>% 
+  ungroup() %>%
+  mutate(word = reorder_within(word, tf_idf, character)) %>%
+  ggplot(aes(tf_idf, word)) +
+  geom_col(aes(fill = character), show.legend = F) +
+  facet_wrap(~character, scales = "free") +
+  scale_y_reordered() +
+  scale_fill_manual(values = col9_mono) +
+  labs(title = "Highest tf-idf words for each character",
+       x = NULL,
+       y = NULL)
+```
+  
+  
+Can you guess the context of each season from the graph below?
+```{r}
+blacklist1 <- c("aaaaaaaa", "googi", "dupee", "du", "eeee", "bom", "pum", "parum", "ole", "beep", "na", "ayyyy", "aj", "shabooyah", "brrrrrrrr", "w.b")
+
+scripts %>% 
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!word %in% blacklist1) %>% 
+  count(season, word) %>% 
+  bind_tf_idf(word, season, n) %>%
+  group_by(season) %>% 
+  slice_max(tf_idf, n = 10) %>% 
+  ungroup() %>%
+  mutate(word = reorder_within(word, tf_idf, season)) %>%
+  ggplot(aes(tf_idf, word)) +
+  geom_col(aes(fill = season), show.legend = F) +
+  facet_wrap(~season, scales = "free") +
+  scale_y_reordered() +
+  scale_fill_manual(values = col9_mono) +
+  labs(title = "Highest tf-idf words for each season",
+       x = NULL,
+       y = NULL)
+```
